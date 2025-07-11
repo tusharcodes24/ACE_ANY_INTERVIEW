@@ -1,6 +1,5 @@
 import {
   FormControl,
-  FormDescription,
   FormItem,
   FormLabel,
   FormMessage,
@@ -33,7 +32,7 @@ const FormField = <T extends FieldValues>({control,name,label,placeholder,type='
                 {...field}
               />
             </FormControl>
-            <FormDescription>This is your public display name.</FormDescription>
+            
             <FormMessage />
           </FormItem>
         )}
