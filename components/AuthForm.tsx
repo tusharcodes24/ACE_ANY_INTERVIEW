@@ -12,6 +12,16 @@ import Image from "next/image";
 import FormField from "./FormField";
 import Link from "next/link";
 
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+} from "firebase/auth";
+import { auth } from "@/firebase/client";
+
+
+import { signIn, signUp } from "@/lib/actions/auth.actions";
+
+
 const authFormSchema = (type: FormType) => {
   return z.object({
     name: type === "sign-up" ? z.string().min(3) : z.string().optional(),
@@ -35,17 +45,57 @@ const AuthForm = ({ type }: { type: FormType }) => {
   });
 
   // 2. Define a submit handler.
-  function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     // Do something with the form values.
     // ✅ This will be type-safe and validated.
     console.log(values);
 
     try {
       if (type === "sign-up") {
-        toast.success(" Account created successfully. Please sign in.");
+        const { name, email, password } = values;
+
+        const userCredentials = await createUserWithEmailAndPassword(
+          auth,
+          email,
+          password
+        );
+
+        const result = await signUp({
+          uid: userCredentials.user.uid,
+          name: name!,
+          email,
+          password,
+        });
+
+        if (!result?.success) {
+          toast.error(result?.message);
+          return;
+        }
+
+        toast.success("Account created successfully. Please sign in.");
         router.push("/sign-in");
       } else {
-        toast.success(" Signed in successfully.");
+        const { email, password } = values;
+
+        const userCredential = await signInWithEmailAndPassword(
+          auth,
+          email,
+          password
+        );
+
+        const idToken = await userCredential.user.getIdToken();
+
+        if (!idToken) {
+          toast.error("Sign in failed");
+          return;
+        }
+
+        await signIn({
+          email,
+          idToken,
+        });
+
+        toast.success("Sign in successfully.");
         router.push("/");
       }
     } catch (error) {
@@ -53,7 +103,7 @@ const AuthForm = ({ type }: { type: FormType }) => {
       toast.error(`There was an error : ${error}`);
     }
   }
-  
+
   const isSignIn = type === "sign-in";
   return (
     <div className="card-border lg:min-w-[566px]">
@@ -93,12 +143,15 @@ const AuthForm = ({ type }: { type: FormType }) => {
             <Button type="submit">Submit</Button>
           </form>
         </Form>
-       <p className="text-center">
-                    {isSignIn ? 'No account yet?' : 'Have an account already?'}
-                    <Link href={!isSignIn ? '/sign-in' : '/sign-up'} className="font-bold text-user-primary ml-1">
-                        {!isSignIn ? "Sign in" : 'Sign up'}
-                    </Link>
-                </p> 
+        <p className="text-center">
+          {isSignIn ? "No account yet?" : "Have an account already?"}
+          <Link
+            href={!isSignIn ? "/sign-in" : "/sign-up"}
+            className="font-bold text-user-primary ml-1"
+          >
+            {!isSignIn ? "Sign in" : "Sign up"}
+          </Link>
+        </p>
       </div>
     </div>
   );
